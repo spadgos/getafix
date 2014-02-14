@@ -9,28 +9,38 @@ Perhaps it's easier to show rather than tell...
 
 1. Create a folder to hold your fixtures. Let's call it 'fixtures'.
 
-        app/ $ mkdir fixtures && cd fixtures
+```bash
+app/ $ mkdir fixtures && cd fixtures
+```
 
 2. Start recreating the API structure by creating folders and files to represent endpoints. Each endpoint should be a
    file with a ".json" extension. Leave them as empty files.
 
-        app/fixtures/ $ mkdir users
-        app/fixtures/ $ touch users/2.json
-        app/fixtures/ $ mkdir users/2
-        app/fixtures/ $ touch users/2/tracks.json
+```bash
+app/fixtures/ $ mkdir users
+app/fixtures/ $ touch users/2.json
+app/fixtures/ $ mkdir users/2
+app/fixtures/ $ touch users/2/tracks.json
+```
 
 3. Configure the base so that Getafix knows where to request the data from. Configuration is done with files named
    ".getafix".
 
-        app/fixtures/ $ touch .getafix
+```bash
+app/fixtures/ $ touch .getafix
+```
 
 4. Add configuration variables to the .getafix file.
 
-        base: 'https://api.example.com'
+```bash
+base: 'https://api.example.com'
+```
 
 5. Run getafix, pointing it to your fixtures directory:
 
-        app/ $ getafix fixtures
+```bash
+app/ $ getafix fixtures
+```
 
 In this example, getafix would make requests to:
 
