@@ -1,6 +1,6 @@
 {
   "name": "getafix",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "It gets fixtures.",
   "main": "index.js",
   "scripts": {
