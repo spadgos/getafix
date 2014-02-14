@@ -30,20 +30,9 @@ module.exports = function scraper(target, options, callback) {
   });
 };
 
-function fileToAPIPath(base) {
-  return function (file) {
-    return {
-      api: file.substring(base.length, file.length - 5), // strip the .json too
-      file: file
-    };
-  };
-}
-
-
 function fetchItems(files, configs, options, callback) {
   async.each(files, function (file, next) {
     var config = getConfig(file, configs, options);
-
     debug('Updating: ' + config.url);
     request.get(
       _.extend({ json: true }, _.pick(config, 'url', 'headers')),
@@ -62,22 +51,27 @@ function fetchItems(files, configs, options, callback) {
 }
 
 function getConfig(file, configs, options) {
-
   var path = '',
       url,
       urlPath,
       config = {
-        url: '/',
-        headers: {}
+        base: '',
+        headers: {},
+        query: {}
       };
 
-  urlPath = file.substring(options.target.length, file.length - 5);
+  urlPath = file.substring(options.target.length, file.length - 5); // strip .json
   Path.dirname(file).split(Path.sep).forEach(function (part) {
+    var thisConf;
     path += (path ? Path.sep : '') + part;
-    if (configs[path]) {
-      _.extend(config, configs[path]);
-      if (configs[path].map) {
-        urlPath = configs[path].map(urlPath);
+    if ((thisConf = configs[path])) {
+      mergeConfig(config, thisConf);
+
+      if (thisConf.base) {
+        urlPath = file.substring(path.length, file.length - 5);
+      }
+      if (thisConf.map) {
+        urlPath = thisConf.map(urlPath);
       }
     }
   });
@@ -127,4 +121,10 @@ function readConfigs(target) {
       }
     ], callback);
   };
+}
+
+function mergeConfig(config, thisConf) {
+  config.base = thisConf.base || config.base;
+  _.extend(config.query, thisConf.query);
+  _.extend(config.headers, thisConf.headers);
 }
