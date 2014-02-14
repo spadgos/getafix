@@ -6,8 +6,15 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "Nick Fisher",
+  "author": {
+    "name": "Nick Fisher",
+    "email": "fisher@soundcloud.com",
+    "url": "https://soundcloud.com/"
+  },
   "license": "MIT",
+  "bin": {
+    "getafix": "./bin/getafix"
+  },
   "dependencies": {
     "yargs": "1.0.15",
     "request": "2.33.0",

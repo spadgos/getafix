@@ -1,0 +1,10 @@
+#!/usr/bin/env node
+
+var getafix = require('..'),
+    _ = require('underscore'),
+    args = require('yargs').argv,
+    dir = _.first(args._) || process.cwd();
+
+getafix(dir, args, function () {
+  console.log('Done');
+});
