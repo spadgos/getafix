@@ -2,8 +2,25 @@
 
 var getafix = require('..'),
     _ = require('underscore'),
-    args = require('yargs').argv,
+    info = require('../package.json'),
+
+    yargs = require('yargs')
+      .usage('getafix [options] dir')
+      .describe('version', 'Print version information and quit.')
+      .alias('version', 'v')
+      .describe('help', 'Print help information and quit.')
+      .alias('help', 'h'),
+
+    args = yargs.argv,
     dir = _.first(args._) || process.cwd();
+
+if (args.version) {
+  console.log(info.name + ' ' + info.version);
+  process.exit(0);
+} else if (args.help) {
+  yargs.showHelp();
+  process.exit(0);
+}
 
 getafix(dir, args, function () {
   console.log('Done');

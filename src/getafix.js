@@ -33,6 +33,10 @@ module.exports = function scraper(target, options, callback) {
 function fetchItems(files, configs, options, callback) {
   async.each(files, function (file, next) {
     var config = getConfig(file, configs, options);
+    if (!config) {
+      next();
+      return;
+    }
     debug('Updating: ' + config.url);
     request.get(
       _.extend({ json: true }, _.pick(config, 'url', 'headers')),
@@ -54,6 +58,7 @@ function getConfig(file, configs, options) {
   var path = '',
       url,
       urlPath,
+      foundConfig = false,
       config = {
         base: '',
         headers: {},
@@ -65,6 +70,7 @@ function getConfig(file, configs, options) {
     var thisConf;
     path += (path ? Path.sep : '') + part;
     if ((thisConf = configs[path])) {
+      foundConfig = true;
       mergeConfig(config, thisConf);
 
       if (thisConf.base) {
@@ -75,6 +81,10 @@ function getConfig(file, configs, options) {
       }
     }
   });
+
+  if (!foundConfig) {
+    return null;
+  }
 
   url = Url.parse(config.base + urlPath, true);
   url.search = null;
