@@ -14,21 +14,6 @@ var getafix = require('../index.js'),
     TMP = __dirname + '/tmp';
 
 describe('Configuration', function () {
-  before(function () {
-    makeStructure({
-      fixtures: {
-        '.getafix': 'base: "http://example.com"',
-        users: {
-          '2.json': true,
-          2: {
-            'tracks.json': true
-          }
-        }
-      }
-    });
-
-  });
-
   afterEach(function () {
     if (request.get.restore) {
       request.get.restore();
@@ -40,7 +25,20 @@ describe('Configuration', function () {
   });
 
   describe('is read from getafix files', function () {
-    it('passes this test', function (done) {
+    it('fetches data and stores it in json files', function (done) {
+
+      makeStructure({
+        fixtures: {
+          '.getafix': 'base: "http://example.com"',
+          users: {
+            '2.json': true,
+            2: {
+              'tracks.json': true
+            }
+          }
+        }
+      });
+
       stubAjax({
         'http://example.com/users/2': { id: 2, username: 'eric', full_name: 'Eric Wahlforss' },
         'http://example.com/users/2/tracks': [
@@ -57,6 +55,35 @@ describe('Configuration', function () {
         expect(tracks[1]).to.have.property('title', 'Nox');
         done();
       });
+    });
+
+    it('merges multiple configuration files', function (done) {
+      makeStructure({
+        '.getafix': [
+          'base: "http://example.com"',
+          'query:',
+          '  foo: 1',
+          '  bar: 2'
+        ].join('\n'),
+        users: {
+          '2.json': true
+        },
+        tracks: {
+          '.getafix': [
+            'query:',
+            '  foo: null',
+            '  quux: 3'
+          ].join('\n'),
+          '10.json': true
+        }
+      });
+
+      stubAjax({
+        'http://example.com/users/2?foo=1&bar=2': { id: 2, username: 'eric' },
+        'http://example.com/tracks/10?bar=2&quux=3': { id: 10, title: 'flickermood' }
+      });
+
+      getafix(TMP, done);
     });
   });
 });
@@ -75,11 +102,11 @@ function makeStructure(structure) {
 }
 
 function _makeStructure(structure, base) {
+  mkdirp.sync(base);
   _.each(structure, function (content, file) {
     var path = Path.join(base, file);
     switch (typeof content) {
       case 'object':
-        mkdirp.sync(path);
         _makeStructure(content, path);
         break;
       case 'string':

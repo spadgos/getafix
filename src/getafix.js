@@ -31,7 +31,6 @@ module.exports = function scraper(target, options, callback) {
       });
     }
   }, function (err, results) {
-    console.log(results);
     fetchItems(results.endpoints, results.configs, options, callback);
   });
 };
