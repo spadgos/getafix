@@ -11,8 +11,13 @@ var _       = require('underscore'),
 
 module.exports = function scraper(target, options, callback) {
 
+  if (typeof options === 'function') {
+    callback = options;
+    options = {};
+  }
+
   options = _.extend({
-    target: target,
+    target: Path.resolve(target),
     onlyNew: false
   }, options);
 
@@ -20,12 +25,13 @@ module.exports = function scraper(target, options, callback) {
     configs: readConfigs(target),
     endpoints: function (next) {
       glob(Path.join(target, '**/*.json'), function (err, files) {
-        async.filter(files, filterItems(options), function (items) {
+        async.filter(files.map(function (file) { return Path.resolve(file); }), filterItems(options), function (items) {
           next(err, items);
         });
       });
     }
   }, function (err, results) {
+    console.log(results);
     fetchItems(results.endpoints, results.configs, options, callback);
   });
 };
@@ -55,7 +61,7 @@ function fetchItems(files, configs, options, callback) {
 }
 
 function getConfig(file, configs, options) {
-  var path = '',
+  var path = '/',
       url,
       urlPath,
       foundConfig = false,
@@ -68,7 +74,7 @@ function getConfig(file, configs, options) {
   urlPath = file.substring(options.target.length, file.length - 5); // strip .json
   Path.dirname(file).split(Path.sep).forEach(function (part) {
     var thisConf;
-    path += (path ? Path.sep : '') + part;
+    path = Path.join(path, part);
     if ((thisConf = configs[path])) {
       foundConfig = true;
       mergeConfig(config, thisConf);
@@ -124,7 +130,7 @@ function readConfigs(target) {
         }, function (err, contents) {
           cb(err, contents.reduce(function (memo, content, i) {
             /*jshint evil: true */
-            memo[Path.dirname(files[i])] = coffee.eval(content);
+            memo[Path.resolve(Path.dirname(files[i]))] = coffee.eval(content);
             return memo;
           }, {}));
         });
