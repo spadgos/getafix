@@ -22,6 +22,57 @@ if (args.version) {
   process.exit(0);
 }
 
-getafix(dir, args, function () {
-  console.log('Done');
-});
+// TODO: move all this text manipulation stuff into a module
+
+println('Getafixing...');
+print('\n\n');
+
+getafix(dir, args).then(function () {
+  move(0, -2);
+  clearLine();
+  println();
+  clearLine();
+  println('Done.');
+}, function (err) {
+  console.log('Error', err);
+}, displayProgress);
+
+function displayProgress(info) {
+  var total = info.total,
+      done = info.done,
+      displaySize = Math.min(40, total),
+      ratio = Math.min(1, displaySize / done),
+      doneChars = Math.ceil(done * ratio),
+      toGoChars = displaySize - doneChars;
+
+  move(0, -2);
+  clearLine();
+  println(done + ' / ' + total + '. Done: ' + info.file);
+  println('[' + repeat('|', doneChars) + repeat('-', toGoChars) + ']');
+}
+
+function move(xDiff, yDiff) {
+  print(
+    (xDiff > 0 ? '\u001b[' + xDiff + 'C' : xDiff < 0 ? '\u001b[' + (-xDiff) + 'D' : '')
+     + (yDiff > 0 ? '\u001b[' + yDiff + 'B' : yDiff < 0 ? '\u001b[' + (-yDiff) + 'A' : '')
+  );
+}
+
+function print(text) {
+  process.stdout.write(text);
+}
+function println(text) {
+  process.stdout.write((text || '') + '\n');
+}
+
+function repeat(str, len) {
+  if (len > 0) {
+    var A = Array;
+    return (new A(len + 1)).join(str);
+  } else {
+    return '';
+  }
+}
+function clearLine() {
+  print('\u001b[K');
+}
