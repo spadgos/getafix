@@ -6,6 +6,10 @@ var getafix = require('..'),
 
     yargs = require('yargs')
       .usage('getafix [options] dir')
+      .describe('only-new', 'Only fetch the new items, don\'t update existing fixtures')
+      .boolean('only-new')
+      ['default']('only-new', false)
+      .alias('only-new', 'n')
       .describe('version', 'Print version information and quit.')
       .alias('version', 'v')
       .describe('help', 'Print help information and quit.')

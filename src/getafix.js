@@ -17,8 +17,8 @@ var _       = require('underscore'),
 module.exports = function (target, options) {
 
   options = _.extend({
-    target: Path.resolve(target),
-    onlyNew: false
+    target    : Path.resolve(target),
+    'only-new': false
   }, options);
 
   return Q.all([
@@ -134,7 +134,7 @@ function getConfig(file, configs, options) {
 
 function filterItems (options) {
   return function (file, next) {
-    if (options.onlyNew) {
+    if (options['only-new']) {
       fs.stat(file, function (err, stats) {
         next(stats.size === 0);
       });
