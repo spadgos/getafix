@@ -56,7 +56,7 @@ function fetchItems(files, configs, options) {
               success = (!err && code < 300);
           debug('Response: ' + code + ' for ' + config.url);
           if (success) {
-            body = JSON.stringify(body, null, 2);
+            body = JSON.stringify(body, null, 2) + '\n';
             debug('Writing ' + Buffer.byteLength(body) + ' bytes to ' + file);
             fs.writeFile(file, body, 'utf8', function (err) {
               if (err) {
