@@ -3,6 +3,8 @@
 Getafix is a program which will automatically create and update your fixture data. Configuration is easy, since all you
 need to do is recreate the API's url structure locally.
 
+![](http://spadgos.github.io/getafix/getafix.jpg)
+
 Perhaps it's easier to show rather than tell...
 
 ## Quick start
