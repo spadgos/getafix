@@ -1,34 +1,30 @@
-## Getafix Fixture Getter
+## Getafix: The Fixture Getter
 
 Getafix is a program which will automatically create and update your fixture data. Configuration is easy, since all you
 need to do is recreate the API's url structure locally.
 
 Perhaps it's easier to show rather than tell...
 
-### Quick start
+## Quick start
 
 1. Create a folder to hold your fixtures. Let's call it 'fixtures'.
 
-        app/ $ mkdir fixtures && cd fixtures
+        [ app/ ] $ mkdir fixtures && cd fixtures
 
 2. Start recreating the API structure by creating folders and files to represent endpoints. Each endpoint should be a
    file with a ".json" extension. Leave them as empty files.
 
-        app/fixtures/ $ mkdir users
-        app/fixtures/ $ touch users/2.json
-        app/fixtures/ $ mkdir users/2
-        app/fixtures/ $ touch users/2/tracks.json
+        [ app/fixtures/ ] $ mkdir users
+        [ app/fixtures/ ] $ touch users/2.json
+        [ app/fixtures/ ] $ mkdir users/2
+        [ app/fixtures/ ] $ touch users/2/tracks.json
 
 3. Configure the base so that Getafix knows where to request the data from. Configuration is done with files named
    ".getafix".
 
-        app/fixtures/ $ touch .getafix
+        app/fixtures/ $ echo "base: 'https://api.example.com'" > .getafix
 
-4. Add configuration variables to the .getafix file.
-
-        base: 'https://api.example.com'
-
-5. Run getafix, pointing it to your fixtures directory:
+4. Run getafix, pointing it to your fixtures directory:
 
         app/ $ getafix fixtures
 
@@ -39,7 +35,7 @@ In this example, getafix would make requests to:
 
 And save the results back into the JSON files. Adding more fixtures is just a case of creating more empty files.
 
-### Configuration
+## Configuration
 
 Configuration files are interpreted as CoffeeScript.
 
@@ -53,7 +49,7 @@ Configuration files are interpreted as CoffeeScript.
 To create different configs for certain endpoints, add extra `.getafix` configuration files in the appropriate folder.
 When more than one config lies in the path to an endpoint, the values are merged together.
 
-#### Examples
+### Examples
 
 ```
 /fixtures
