@@ -17,55 +17,62 @@ var _       = require('underscore'),
 module.exports = getafix;
 
 function getafix (target, options) {
+  var defer = Q.defer();
+
   options = _.extend({
     target    : Path.resolve(target),
     'only-new': false
   }, options);
 
-  return Q.all([
+  Q.all([
     readConfigs(target),
     glob(Path.join(target, '**/*.json')).then(function (files) {
       var deferred = Q.defer();
-      async.filter(files.map(function (file) { return Path.resolve(file); }), filterItems(options), function (items) {
-        deferred.resolve(items);
-      });
+      async.filter(files.map(function (file) { return Path.resolve(file); }), filterItems(options), deferred.resolve);
       return deferred.promise;
     })
   ]).spread(function (configs, endpoints) {
-    return fetchItems(endpoints, configs, options);
-  });
+    return fetchItems(endpoints, configs, options, defer.notify);
+  }).then(defer.resolve, defer.reject);
+
+  return defer.promise;
 }
 // exposed so that tests can stub it
 getafix.request = Q.denodeify(Request.get);
 
-function fetchItems(files, configs, options) {
-  return files
+function fetchItems(files, configs, options, notify) {
+  return _.chain(files)
     .map(function (file) {
       var config = getConfig(file, configs, options);
       return config ? { file: file, config: config } : null;
     })
     .filter(_.identity)
+    .tap(function (items) {
+      notify({ type: 'before', size: items.length });
+    })
     .reduce(function (promise, item) {
       return promise.then(function () {
         var config = item.config,
             file = item.file;
         debug('Updating: ' + config.url);
+        notify({ type: 'requesting', file: file, url: config.url });
         return getafix.request(_.extend({ json: true }, _.pick(config, 'url', 'headers')))
           .spread(function (response, body) {
             var code = response.statusCode,
                 success = code < 300;
-
             debug('Response: ' + response.statusCode + ' for ' + config.url);
             if (success) {
               body = JSON.stringify(body, null, 2) + '\n';
               debug('Writing ' + Buffer.byteLength(body) + ' bytes to ' + file);
+              notify({ type: 'success', file: file });
               return writeFile(file, body, 'utf8');
             } else {
-              throw new Error('Error fetching ' + config.url);
+              notify({ type: 'warning', file: file, url: config.url, code: code });
             }
           });
       });
-    }, Q.resolve());
+    }, Q.resolve())
+    .value();
 }
 
 function getConfig(file, configs, options) {

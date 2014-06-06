@@ -29,30 +29,32 @@ if (args.version) {
 // TODO: move all this text manipulation stuff into a module
 
 println('Getafixing...');
-print('\n\n');
 
-getafix(dir, args).then(function () {
-  move(0, -2);
-  clearLine();
-  println();
-  clearLine();
-  println('Done.');
-}, function (err) {
-  console.log('Error', err);
-}, displayProgress);
+getafix(dir, args).then(
+  function () {
+    println('Done.');
+  },
+  console.log.bind(console, 'Error'),
+  displayProgress
+);
 
 function displayProgress(info) {
-  var total = info.total,
-      done = info.done,
-      displaySize = Math.min(40, total),
-      ratio = Math.min(1, displaySize / done),
-      doneChars = Math.ceil(done * ratio),
-      toGoChars = displaySize - doneChars;
-
-  move(0, -2);
-  clearLine();
-  println(done + ' / ' + total + '. Done: ' + info.file);
-  println('[' + repeat('|', doneChars) + repeat('-', toGoChars) + ']');
+  switch (info.type) {
+    case 'before':
+      println('Found ' + info.size + ' fixtures to update.');
+      break;
+    case 'requesting':
+      println('Requesting ' + info.file.replace(process.cwd(), ''));
+      move(0, -1);
+      break;
+    case 'success':
+      clearLine();
+      break;
+    case 'warning':
+      clearLine();
+      println('WARNING: ' + info.code + ' when requesting ' + info.url);
+      break;
+  }
 }
 
 function move(xDiff, yDiff) {
@@ -69,14 +71,6 @@ function println(text) {
   process.stdout.write((text || '') + '\n');
 }
 
-function repeat(str, len) {
-  if (len > 0) {
-    var A = Array;
-    return (new A(len + 1)).join(str);
-  } else {
-    return '';
-  }
-}
 function clearLine() {
   print('\u001b[K');
 }
