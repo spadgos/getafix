@@ -22,7 +22,7 @@ describe('Configuration', function () {
     rimraf.sync(TMP);
   });
 
-  describe('is read from getafix files', function () {
+  describe('read from getafix files', function () {
     it('fetches data and stores it in json files', function (done) {
       makeStructure({
         '.getafix': 'base: "http://example.com"',
@@ -85,6 +85,29 @@ describe('Configuration', function () {
         expect(track).to.have.property('title', 'flickermood');
         done();
       }).catch(done);
+    });
+
+    it('which must be valid Coffeescript', function (done) {
+      makeStructure({
+        '.getafix': '3adadt14361 113 some invalid content!!'
+      });
+      getafix(TMP).then(function () {
+        done(new Error('getafix should have failed'));
+      }, function (err) {
+        expect(err.message).to.match(/Error in .*\/\.getafix/);
+        done();
+      });
+    });
+
+    it('supports functions in configuration files', function (done) {
+      makeStructure({
+        '.getafix': [
+          'map: (path) -> \'/resolve?url=example.com/\' + path'
+        ].join('\n')
+      });
+      getafix(TMP).then(function () {
+        done();
+      }, done);
     });
   });
 });

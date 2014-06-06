@@ -21,7 +21,7 @@
   },
   "dependencies": {
     "async": "0.2.10",
-    "cson-safe": "0.1.1",
+    "coffee-script": "1.7.1",
     "debug": "0.7.4",
     "glob": "3.2.8",
     "q": "1.0.0",
