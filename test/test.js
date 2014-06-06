@@ -1,23 +1,21 @@
-/*globals it, describe, before, after, afterEach */
+/*globals it, describe, after, afterEach */
 
 var getafix = require('../index.js'),
-    expect = require('expect.js'),
-    mkdirp = require('mkdirp'),
-    rimraf = require('rimraf'),
-    touch = require('touch'),
-    sinon = require('sinon'),
-    request = require('request'),
-    fs = require('fs'),
-    debug = require('debug')('test'),
-    Path = require('path'),
-    _ = require('underscore'),
-    TMP = __dirname + '/tmp';
+    _       = require('underscore'),
+    debug   = require('debug')('test'),
+    expect  = require('expect.js'),
+    fs      = require('fs'),
+    mkdirp  = require('mkdirp'),
+    Path    = require('path'),
+    Q       = require('q'),
+    rimraf  = require('rimraf'),
+    sinon   = require('sinon'),
+    touch   = require('touch'),
+    TMP     = __dirname + '/tmp';
 
 describe('Configuration', function () {
   afterEach(function () {
-    if (request.get.restore) {
-      request.get.restore();
-    }
+    _.result(getafix.request, 'restore');
   });
 
   after(function () {
@@ -26,7 +24,6 @@ describe('Configuration', function () {
 
   describe('is read from getafix files', function () {
     it('fetches data and stores it in json files', function (done) {
-
       makeStructure({
         fixtures: {
           '.getafix': 'base: "http://example.com"',
@@ -46,7 +43,7 @@ describe('Configuration', function () {
           { id: 11, title: 'Nox' }
         ]
       });
-      getafix(TMP, function () {
+      getafix(TMP).then(function () {
         var user = require(Path.join(TMP, 'fixtures', 'users', '2.json')),
             tracks = require(Path.join(TMP, 'fixtures', 'users', '2', 'tracks.json'));
         expect(user).to.have.property('username', 'eric');
@@ -54,7 +51,7 @@ describe('Configuration', function () {
         expect(tracks[0]).to.have.property('title', 'flickermood');
         expect(tracks[1]).to.have.property('title', 'Nox');
         done();
-      });
+      }).catch(done);
     });
 
     it('merges multiple configuration files', function (done) {
@@ -83,16 +80,18 @@ describe('Configuration', function () {
         'http://example.com/tracks/10?bar=2&quux=3': { id: 10, title: 'flickermood' }
       });
 
-      getafix(TMP, done);
+      getafix(TMP).then(function () {
+        done();
+      }).catch(done);
     });
   });
 });
 
 function stubAjax(responses) {
-  sinon.stub(request, 'get', function (options, ajaxDone) {
+  sinon.stub(getafix, 'request', function (options) {
     debug('Intercepted request for ', options.url);
     expect(responses).to.have.property(options.url);
-    ajaxDone(null, { statusCode: 200 }, responses[options.url]);
+    return Q.resolve([{ statusCode: 200 }, responses[options.url]]);
   });
 }
 

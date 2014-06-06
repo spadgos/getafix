@@ -6,16 +6,17 @@ var _       = require('underscore'),
     fs      = require('fs'),
     Glob    = require('glob'),
     Path    = require('path'),
-    request = require('request'),
+    Request = require('request'),
     Q       = require('q'),
     Url     = require('url'),
 
-    readFile = Q.denodeify(fs.readFile),
-    glob     = Q.denodeify(Glob);
+    readFile  = Q.denodeify(fs.readFile),
+    writeFile = Q.denodeify(fs.writeFile),
+    glob      = Q.denodeify(Glob);
 
+module.exports = getafix;
 
-module.exports = function (target, options) {
-
+function getafix (target, options) {
   options = _.extend({
     target    : Path.resolve(target),
     'only-new': false
@@ -33,55 +34,38 @@ module.exports = function (target, options) {
   ]).spread(function (configs, endpoints) {
     return fetchItems(endpoints, configs, options);
   });
-};
+}
+// exposed so that tests can stub it
+getafix.request = Q.denodeify(Request.get);
 
 function fetchItems(files, configs, options) {
-  var defer = Q.defer(), promises, done = 0;
-  promises = files
+  return files
     .map(function (file) {
       var config = getConfig(file, configs, options);
       return config ? { file: file, config: config } : null;
     })
     .filter(_.identity)
-    .map(function (item) {
-      var config = item.config,
-          file = item.file,
-          deferred = Q.defer();
+    .reduce(function (promise, item) {
+      return promise.then(function () {
+        var config = item.config,
+            file = item.file;
+        debug('Updating: ' + config.url);
+        return getafix.request(_.extend({ json: true }, _.pick(config, 'url', 'headers')))
+          .spread(function (response, body) {
+            var code = response.statusCode,
+                success = code < 300;
 
-      debug('Updating: ' + config.url);
-      request.get(
-        _.extend({ json: true }, _.pick(config, 'url', 'headers')),
-        function (err, response, body) {
-          var code = response && response.statusCode,
-              success = (!err && code < 300);
-          debug('Response: ' + code + ' for ' + config.url);
-          if (success) {
-            body = JSON.stringify(body, null, 2) + '\n';
-            debug('Writing ' + Buffer.byteLength(body) + ' bytes to ' + file);
-            fs.writeFile(file, body, 'utf8', function (err) {
-              if (err) {
-                deferred.reject(err);
-              } else {
-                deferred.resolve();
-              }
-            });
-          } else {
-            deferred.reject(err);
-          }
-        }
-      );
-      return deferred.promise.then(function () {
-        ++done;
-        defer.notify({ done: done, total: promises.length, file: file });
+            debug('Response: ' + response.statusCode + ' for ' + config.url);
+            if (success) {
+              body = JSON.stringify(body, null, 2) + '\n';
+              debug('Writing ' + Buffer.byteLength(body) + ' bytes to ' + file);
+              return writeFile(file, body, 'utf8');
+            } else {
+              throw new Error('Error fetching ' + config.url);
+            }
+          });
       });
-    });
-
-  Q.all(promises).then(
-    defer.resolve.bind(defer),
-    defer.reject.bind(defer)
-  );
-
-  return defer.promise;
+    }, Q.resolve());
 }
 
 function getConfig(file, configs, options) {
