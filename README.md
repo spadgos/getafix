@@ -39,7 +39,7 @@ And save the results back into the JSON files. Adding more fixtures is just a ca
 
 ## Configuration
 
-Configuration files are interpreted as CoffeeScript.
+Configuration files are in CSON format.
 
 - `base` *(String)* All files beyond this point use this value as a base for the url to request. Folder structure up to this point
   is ignored.

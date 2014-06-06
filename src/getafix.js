@@ -1,7 +1,7 @@
 /*globals Buffer */
 var _       = require('underscore'),
     async   = require('async'),
-    coffee  = require('coffee-script'),
+    CSON    = require('cson-safe'),
     debug   = require('debug')('getafix'),
     fs      = require('fs'),
     Glob    = require('glob'),
@@ -145,8 +145,7 @@ function readConfigs(target) {
     })
     .then(function (contents) {
       return contents.reduce(function (memo, content, i) {
-        /*jshint evil: true */
-        memo[Path.resolve(Path.dirname(fileNames[i]))] = coffee.eval(content);
+        memo[Path.resolve(Path.dirname(fileNames[i]))] = CSON.parse(content);
         return memo;
       }, {});
     });
