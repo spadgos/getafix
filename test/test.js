@@ -25,13 +25,11 @@ describe('Configuration', function () {
   describe('is read from getafix files', function () {
     it('fetches data and stores it in json files', function (done) {
       makeStructure({
-        fixtures: {
-          '.getafix': 'base: "http://example.com"',
-          users: {
-            '2.json': true,
-            2: {
-              'tracks.json': true
-            }
+        '.getafix': 'base: "http://example.com"',
+        users: {
+          '2.json': true,
+          2: {
+            'tracks.json': true
           }
         }
       });
@@ -44,8 +42,8 @@ describe('Configuration', function () {
         ]
       });
       getafix(TMP).then(function () {
-        var user = require(Path.join(TMP, 'fixtures', 'users', '2.json')),
-            tracks = require(Path.join(TMP, 'fixtures', 'users', '2', 'tracks.json'));
+        var user = require(Path.join(TMP, 'users', '2.json')),
+            tracks = require(Path.join(TMP, 'users', '2', 'tracks.json'));
         expect(user).to.have.property('username', 'eric');
         expect(tracks).to.be.an('array');
         expect(tracks[0]).to.have.property('title', 'flickermood');
@@ -81,6 +79,10 @@ describe('Configuration', function () {
       });
 
       getafix(TMP).then(function () {
+        var user = require(Path.join(TMP, 'users', '2.json')),
+            track = require(Path.join(TMP, 'tracks', '10.json'));
+        expect(user).to.have.property('username', 'eric');
+        expect(track).to.have.property('title', 'flickermood');
         done();
       }).catch(done);
     });
