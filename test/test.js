@@ -52,6 +52,33 @@ describe('Configuration', function () {
       }).catch(done);
     });
 
+    it('supports formats other than json', function (done) {
+      makeStructure({
+        '.getafix': 'base: "http://example.com"',
+        users: {
+          '2.xml': true,
+          2: {
+            'tracks.txt': true
+          }
+        }
+      });
+
+      var userRawResp = '<?xml version="1.0" encoding="UTF-8" ?><response></response>',
+          tracksRawResp = 'Got some tracks as a text file!';
+
+      stubAjax({
+        'http://example.com/users/2': userRawResp,
+        'http://example.com/users/2/tracks': tracksRawResp
+      });
+      getafix(TMP).then(function () {
+        var user = fs.readFileSync(Path.join(TMP, 'users', '2.xml'), 'utf8'),
+            tracks = fs.readFileSync(Path.join(TMP, 'users', '2', 'tracks.txt'), 'utf8');
+        expect(user).to.equal(userRawResp + '\n');
+        expect(tracks).to.equal(tracksRawResp + '\n');
+        done();
+      }).catch(done);
+    });
+
     it('merges multiple configuration files', function (done) {
       makeStructure({
         '.getafix': [
