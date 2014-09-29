@@ -26,7 +26,7 @@ function getafix (target, options) {
 
   Q.all([
     readConfigs(target),
-    glob(Path.join(target, '**/*.json')).then(function (files) {
+    glob(Path.join(target, '**/*.*')).then(function (files) {
       var deferred = Q.defer();
       async.filter(files.map(function (file) { return Path.resolve(file); }), filterItems(options), deferred.resolve);
       return deferred.promise;
@@ -56,13 +56,16 @@ function fetchItems(files, configs, options, notify) {
             file = item.file;
         debug('Updating: ' + config.url);
         notify({ type: 'requesting', file: file, url: config.url });
-        return getafix.request(_.extend({ json: true }, _.pick(config, 'url', 'headers')))
+        return getafix.request(_.extend({ json: config.json }, _.pick(config, 'url', 'headers')))
           .spread(function (response, body) {
             var code = response.statusCode,
                 success = code < 300;
             debug('Response: ' + response.statusCode + ' for ' + config.url);
             if (success) {
-              body = JSON.stringify(body, null, 2) + '\n';
+              if (config.json) {
+                body = JSON.stringify(body, null, 2);
+              }
+              body += '\n';
               debug('Writing ' + Buffer.byteLength(body) + ' bytes to ' + file);
               notify({ type: 'success', file: file });
               return writeFile(file, body, 'utf8');
@@ -80,13 +83,15 @@ function getConfig(file, configs, options) {
       url,
       urlPath,
       foundConfig = false,
+      extIndex = file.lastIndexOf('.'),
       config = {
         base: '',
         headers: {},
-        query: {}
+        query: {},
+        json: /\.json$/.test(file)
       };
 
-  urlPath = file.substring(options.target.length, file.length - 5); // strip .json
+  urlPath = file.substring(options.target.length, extIndex); // strip extension
   Path.dirname(file).split(Path.sep).forEach(function (part) {
     var thisConf;
     path = Path.join(path, part);
@@ -95,7 +100,7 @@ function getConfig(file, configs, options) {
       mergeConfig(config, thisConf);
 
       if (thisConf.base) {
-        urlPath = file.substring(path.length, file.length - 5);
+        urlPath = file.substring(path.length, extIndex);
       }
       if (thisConf.map) {
         urlPath = thisConf.map(urlPath);
