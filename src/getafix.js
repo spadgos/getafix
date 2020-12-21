@@ -1,112 +1,109 @@
-/*globals Buffer */
-var _       = require('underscore'),
-    async   = require('async'),
-    Coffee  = require('coffee-script'),
-    debug   = require('debug')('getafix'),
-    fs      = require('fs'),
-    Glob    = require('glob'),
-    Path    = require('path'),
-    Request = require('request'),
-    Q       = require('q'),
-    Url     = require('url'),
+const _ = require('underscore');
+const Coffee = require('coffee-script');
+const debug = require('debug')('getafix');
+const fs = require('fs').promises;
+const Glob = require('glob');
+const Path = require('path');
+const got = require('got');
+const Url = require('url');
 
-    readFile  = Q.denodeify(fs.readFile),
-    writeFile = Q.denodeify(fs.writeFile),
-    glob      = Q.denodeify(Glob);
+const glob = (pattern) =>
+  new Promise((resolve, reject) => {
+    Glob(pattern, (err, matches) => {
+      if (err) {
+        return reject(err);
+      }
+      resolve(matches);
+    });
+  });
 
 module.exports = getafix;
 
-function getafix (target, options) {
-  var defer = Q.defer();
+async function getafix(target, notify, options) {
+  options = _.extend(
+    {
+      target: Path.resolve(target),
+      'only-new': false,
+    },
+    options
+  );
 
-  options = _.extend({
-    target    : Path.resolve(target),
-    'only-new': false
-  }, options);
-
-  Q.all([
-    readConfigs(target),
-    glob(Path.join(target, '**/*.*')).then(function (files) {
-      var deferred = Q.defer();
-      async.filter(files.map(function (file) { return Path.resolve(file); }), filterItems(options), deferred.resolve);
-      return deferred.promise;
-    })
-  ]).spread(function (configs, endpoints) {
-    return fetchItems(endpoints, configs, options, defer.notify);
-  }).then(defer.resolve, defer.reject);
-
-  return defer.promise;
+  const configsPromise = readConfigs(target);
+  let files = await glob(Path.join(target, '**/*.*'));
+  if (options['only-new']) {
+    const fileStats = await Promise.all(
+      files.map((f) => fs.stat(Path.resolve(f)))
+    );
+    files = files.filter((f, index) => fileStats[index].size === 0);
+  }
+  return fetchItems(files, await configsPromise, options, notify);
 }
 // exposed so that tests can stub it
-getafix.request = Q.denodeify(Request.get);
+getafix.got = got;
 
-function fetchItems(files, configs, options, notify) {
-  return _.chain(files)
-    .map(function (file) {
-      var config = getConfig(file, configs, options);
-      return config ? { file: file, config: config } : null;
-    })
-    .filter(_.identity)
-    .tap(function (items) {
-      notify({ type: 'before', size: items.length });
-    })
-    .reduce(function (promise, item) {
-      return promise.then(function () {
-        var config = item.config,
-            file = item.file;
-        debug('Updating: ' + config.url);
-        notify({ type: 'requesting', file: file, url: config.url });
-        return getafix.request(_.extend({ json: config.json }, _.pick(config, 'url', 'headers')))
-          .spread(function (response, body) {
-            var code = response.statusCode,
-                success = code < 300;
-            debug('Response: ' + response.statusCode + ' for ' + config.url);
-            if (success) {
-              if (config.json) {
-                body = JSON.stringify(body, null, 2);
-              }
-              body += '\n';
-              debug('Writing ' + Buffer.byteLength(body) + ' bytes to ' + file);
-              notify({ type: 'success', file: file });
-              return writeFile(file, body, 'utf8');
-            } else {
-              notify({ type: 'warning', file: file, url: config.url, code: code });
-            }
-          });
+async function fetchItems(files, configs, options, notify) {
+  for (const file of files) {
+    const config = getConfig(file, configs, options);
+    if (!config) {
+      continue;
+    }
+    debug('Updating: ' + config.url);
+    notify({ type: 'requesting', file: file, url: config.url });
+    const response = await getafix.got({
+      responseType: config.json ? 'json' : 'text',
+      url: config.url,
+      headers: config.headers,
+      throwHttpErrors: false,
+    });
+    const statusCode = response.statusCode;
+
+    debug('Response: ' + statusCode + ' for ' + config.url);
+    if (statusCode < 300) {
+      debug('Writing ' + response.rawBody.length + ' bytes to ' + file);
+      notify({ type: 'success', file: file });
+      await fs.writeFile(file, response.rawBody);
+    } else {
+      notify({
+        type: 'warning',
+        file: file,
+        url: config.url,
+        code: statusCode,
       });
-    }, Q.resolve())
-    .value();
+    }
+  }
 }
 
 function getConfig(file, configs, options) {
-  var path = '/',
-      url,
-      urlPath,
-      foundConfig = false,
-      extIndex = file.lastIndexOf('.'),
-      config = {
-        base: '',
-        headers: {},
-        query: {},
-        json: /\.json$/.test(file)
-      };
+  let path = '/';
+  let url,
+    urlPath,
+    foundConfig = false;
+  const extIndex = file.lastIndexOf('.');
+  const config = {
+    base: '',
+    headers: {},
+    query: {},
+    json: /\.json$/.test(file),
+  };
 
   urlPath = file.substring(options.target.length, extIndex); // strip extension
-  Path.dirname(file).split(Path.sep).forEach(function (part) {
-    var thisConf;
-    path = Path.join(path, part);
-    if ((thisConf = configs[path])) {
-      foundConfig = true;
-      mergeConfig(config, thisConf);
+  Path.dirname(file)
+    .split(Path.sep)
+    .forEach(function (part) {
+      let thisConf;
+      path = Path.join(path, part);
+      if ((thisConf = configs[path])) {
+        foundConfig = true;
+        mergeConfig(config, thisConf);
 
-      if (thisConf.base) {
-        urlPath = file.substring(path.length, extIndex);
+        if (thisConf.base) {
+          urlPath = file.substring(path.length, extIndex);
+        }
+        if (thisConf.map) {
+          urlPath = thisConf.map(urlPath);
+        }
       }
-      if (thisConf.map) {
-        urlPath = thisConf.map(urlPath);
-      }
-    }
-  });
+    });
 
   if (!foundConfig) {
     return null;
@@ -128,41 +125,23 @@ function getConfig(file, configs, options) {
   return config;
 }
 
-function filterItems (options) {
-  return function (file, next) {
-    if (options['only-new']) {
-      fs.stat(file, function (err, stats) {
-        next(stats.size === 0);
-      });
-    } else {
-      next(true);
+async function readConfigs(target) {
+  let fileNames;
+
+  const files = await glob(Path.join(target, '**/.getafix'));
+  const configs = {};
+  for (const file of files) {
+    debug('Reading ' + file);
+    const content = await fs.readFile(file, 'utf8');
+
+    try {
+      // evil
+      configs[Path.resolve(Path.dirname(file))] = Coffee.eval(content);
+    } catch (e) {
+      throw new Error('Error in ' + file);
     }
-  };
-}
-
-function readConfigs(target) {
-  var fileNames;
-
-  return glob(Path.join(target, '**/.getafix'))
-    .then(function (files) {
-      fileNames = files;
-      return Q.all(files.map(getContents));
-    })
-    .then(function (contents) {
-      return contents.reduce(function (memo, content, i) {
-        try {
-          /*jshint evil: true */
-          memo[Path.resolve(Path.dirname(fileNames[i]))] = Coffee.eval(content);
-        } catch (e) {
-          throw new Error('Error in ' + fileNames[i]);
-        }
-        return memo;
-      }, {});
-    });
-
-  function getContents(file) {
-    return readFile(file, 'utf8');
   }
+  return configs;
 }
 
 function mergeConfig(config, thisConf) {

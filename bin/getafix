@@ -26,16 +26,14 @@ if (args.version) {
   process.exit(0);
 }
 
-// TODO: move all this text manipulation stuff into a module
 
 println('Getafixing...');
 
-getafix(dir, args).then(
+getafix(dir, displayProgress, args).then(
   function () {
     println('Done.');
   },
   console.log.bind(console, 'Error'),
-  displayProgress
 );
 
 function displayProgress(info) {
