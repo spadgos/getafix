@@ -1,5 +1,5 @@
 const _ = require('underscore');
-const Coffee = require('coffee-script');
+const Coffee = require('coffeescript');
 const debug = require('debug')('getafix');
 const fs = require('fs').promises;
 const Glob = require('glob');
