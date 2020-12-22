@@ -1,6 +1,6 @@
 {
   "name": "getafix",
-  "version": "0.0.2",
+  "version": "1.0.0",
   "description": "Fixture downloader",
   "main": "index.js",
   "scripts": {
